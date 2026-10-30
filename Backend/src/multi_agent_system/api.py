@@ -71,4 +71,4 @@ def generate_research(request: ResearchRequest):
 
 # run command - uv run python -m uvicorn multi_agent_system.api:app --reload
 
-#- uv run python -m uvicorn multi_agent_system.api:app --reload --app-dir src
+#- uv run --no-sync python -m uvicorn multi_agent_system.api:app --app-dir src --reload
