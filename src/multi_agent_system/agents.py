@@ -1,16 +1,31 @@
 from langchain.agents import create_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from tools import web_search, scrape_url
+from .tools import web_search, scrape_url
 import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
 load_dotenv()
 
-#model setup
+# Model setup
+llm = ChatGroq(
+    model="openai/gpt-oss-120b",
+    api_key=os.getenv("GROQ_API_KEY"),
+    max_tokens=1000
+)
 
-llm = ChatGroq(model="openai/gpt-oss-120b", api_key=os.getenv("GROQ_API_KEY"))
+writer_llm = ChatGroq(
+    model="openai/gpt-oss-120b",
+    api_key=os.getenv("GROQ_API_KEY"),
+    max_tokens=3000
+)
+
+critic_llm = ChatGroq(
+    model="openai/gpt-oss-120b",
+    api_key=os.getenv("GROQ_API_KEY"),
+    max_tokens=800
+)
 
 #first agent
 def build_search_agent():
@@ -46,7 +61,7 @@ writer_prompt = ChatPromptTemplate.from_messages([
     Be detailed, factual and professional.""")
 ])
 
-writer_chain = writer_prompt | llm | StrOutputParser()
+writer_chain = writer_prompt | writer_llm | StrOutputParser()
 
 # critic chain
 
@@ -74,5 +89,5 @@ critic_prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-critic_chain = critic_prompt | llm | StrOutputParser()
+critic_chain = critic_prompt | critic_llm | StrOutputParser()
 

@@ -1,4 +1,31 @@
-from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
+from .agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
+import time
+
+
+
+def invoke_with_retry(chain, inputs, max_attempts=3):
+    for attempt in range(max_attempts):
+        try:
+            return chain.invoke(inputs)
+
+        except Exception as error:
+            status_code = getattr(error, "status_code", None)
+
+            # Retry only for rate-limit errors
+            if status_code != 429 and "429" not in str(error):
+                raise
+
+            if attempt == max_attempts - 1:
+                raise
+
+            wait_seconds = 10 * (attempt + 1)
+
+            print(
+                f"Rate limit reached. "
+                f"Retrying in {wait_seconds} seconds..."
+            )
+
+            time.sleep(wait_seconds)
 
 def run_research_pipeline(topic: str) -> dict:
     state = {}
@@ -11,10 +38,10 @@ def run_research_pipeline(topic: str) -> dict:
     print("="*50)
 
     search_agent = build_search_agent()
-    serach_result = search_agent.invoke({
+    search_result = search_agent.invoke({
         "messages" : [("user", f"find recent, reliable and detailed information about: {topic}")]
     })
-    state["search_result"] = serach_result["messages"][-1].content
+    state["search_result"] = search_result["messages"][-1].content
 
     print("\n search result ", state["search_result"])
 
@@ -46,14 +73,20 @@ def run_research_pipeline(topic: str) -> dict:
     print("="*50)
 
     research_combined = (
-        f"SEARCH RESULTS : \n {state['search_result']}\n\n"
-        f"DETAILED SCRAPED CONTENT : \n {state['scraped_content']}"
-    )
+    f"SEARCH RESULTS:\n"
+    f"{state['search_result'][:10000]}\n\n"
+    f"DETAILED SCRAPED CONTENT:\n"
+    f"{state['scraped_content'][:15000]}"
+)
 
+
+    print("Research input characters:", len(research_combined))
+    
     state['report'] = writer_chain.invoke({
         "topic": topic,
         "research": research_combined
     })
+    print("Research input characters:", len(research_combined))
 
     print("\n Final Report\n", state['report'])
 
@@ -63,9 +96,10 @@ def run_research_pipeline(topic: str) -> dict:
     print("step 4 - critic is reviewing the report ...")
     print("="*50)
 
-    state['feedback'] = critic_chain.invoke({
-        "report": state['report']
-    })
+    state["feedback"] = invoke_with_retry(
+    critic_chain,
+    {"report": state["report"]}
+)
 
     print("\n critic report\n", state['feedback'])
 
