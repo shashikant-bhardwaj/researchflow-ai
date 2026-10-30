@@ -10,7 +10,10 @@ app = FastAPI(title="Research API")
 # Allow requests from the Vite development server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://researchflow-ai-frontend.onrender.com",
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
